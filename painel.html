@@ -129,23 +129,16 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, set, push, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // INSIRA CONFIGURAÇÃO DO SEU FIREBASE AQUI:
-    // Import the functions you need from the SDKs you need
-    import { initializeApp } from "firebase/app";
-    // TODO: Add SDKs for Firebase products that you want to use
-    // https://firebase.google.com/docs/web/setup#available-libraries
-
-    // Your web app's Firebase configuration
+    // Configuração oficial obtida do seu console
     const firebaseConfig = {
-    apiKey: "AIzaSyAMxBFnJwstpdUuT_Bl6EVYl6hR6h6TF80",
-    authDomain: "bd-leilao-moabb.firebaseapp.com",
-    databaseURL: "https://bd-leilao-moabb-default-rtdb.firebaseio.com",
-    projectId: "bd-leilao-moabb",
-    storageBucket: "bd-leilao-moabb.firebasestorage.app",
-    messagingSenderId: "1067323234874",
-    appId: "1:1067323234874:web:44c5bef512043972fdf303"
+        apiKey: "AIzaSyAMxBFnJwstpdUuT_Bl6EVYl6hR6h6TF80",
+        authDomain: "bd-leilao-moabb.firebaseapp.com",
+        databaseURL: "https://bd-leilao-moabb-default-rtdb.firebaseio.com",
+        projectId: "bd-leilao-moabb",
+        storageBucket: "bd-leilao-moabb.firebasestorage.app",
+        messagingSenderId: "1067323234874",
+        appId: "1:1067323234874:web:44c5bef512043972fdf303"
     };
-
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
@@ -171,6 +164,8 @@
         set(novoLeilaoRef, dadosLeilao).then(() => {
             alert('Leilão criado com sucesso!');
             document.getElementById('leilaoForm').reset();
+        }).catch((error) => {
+            console.error("Erro ao criar leilão: ", error);
         });
     });
 
@@ -182,11 +177,13 @@
             snapshot.forEach((childSnapshot) => {
                 const leilao = childSnapshot.val();
                 const classeSel = leilao.id === leilaoSelecionadoId ? 'selecionado' : '';
-                listaDiv.innerHTML += `
-                    <div class="leilao-item ${classeSel}" onclick="carregarLeilao('${leilao.id}', '${leilao.nome}')">
-                        <span>${leilao.nome}</span>
-                    </div>
-                `;
+                
+                // Criar elemento via DOM para evitar quebras de escopo de clique
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `leilao-item ${classeSel}`;
+                itemDiv.innerHTML = `<span>${leilao.nome}</span>`;
+                itemDiv.onclick = () => window.carregarLeilao(leilao.id, leilao.nome);
+                listaDiv.appendChild(itemDiv);
             });
         } else {
             listaDiv.innerHTML = 'Nenhum leilão criado.';
@@ -197,8 +194,8 @@
     window.carregarLeilao = function(id, nome) {
         leilaoSelecionadoId = id;
         
-        // Ativar as outras colunas da tela
-        document.getElementById('cardCadastroLotes').classList.remove('desativated', 'desativado');
+        // Ativar as outras colunas da tela retirando a classe 'desativado'
+        document.getElementById('cardCadastroLotes').classList.remove('desativado');
         document.getElementById('cardControleTransmissao').classList.remove('desativated', 'desativado');
         document.getElementById('nomeLeilaoAtual').innerText = nome;
 
@@ -213,15 +210,24 @@
             if (snapshot.exists()) {
                 snapshot.forEach((childSnapshot) => {
                     const lote = childSnapshot.val();
-                    listaLotesDiv.innerHTML += `
-                        <div class="lote-item">
-                            <div>
-                                <strong>${lote.numero}</strong> - ${lote.raca}<br>
-                                <small>Base: R$ ${lote.lance} (${lote.tipo.toUpperCase()})</small>
-                            </div>
-                            <button class="btn-no-ar" id="btn-${lote.id}" onclick="colocarNoAr('${lote.id}')">No Ar</button>
+                    
+                    const loteDiv = document.createElement('div');
+                    loteDiv.className = 'lote-item';
+                    loteDiv.innerHTML = `
+                        <div>
+                            <strong>${lote.numero}</strong> - ${lote.raca}<br>
+                            <small>Base: R$ ${lote.lance} (${lote.tipo.toUpperCase()})</small>
                         </div>
                     `;
+                    
+                    const btnNoAr = document.createElement('button');
+                    btnNoAr.className = 'btn-no-ar';
+                    btnNoAr.id = `btn-${lote.id}`;
+                    btnNoAr.innerText = 'No Ar';
+                    btnNoAr.onclick = () => window.colocarNoAr(lote.id);
+                    
+                    loteDiv.appendChild(btnNoAr);
+                    listaLotesDiv.appendChild(loteDiv);
                 });
                 atualizarBotaoAtivo();
             } else {
@@ -238,7 +244,7 @@
         const novoLoteRef = push(ref(db, `leiloes/${leilaoSelecionadoId}/lotes`));
         const dados = {
             id: novoLoteRef.key,
-            leilaoId: leilaoSelecionadoId, // Vincula o lote ao leilão pai
+            leilaoId: leilaoSelecionadoId,
             tipo: document.getElementById('tipo').value,
             numero: document.getElementById('numero').value,
             qtd: document.getElementById('qtd').value,
@@ -255,7 +261,9 @@
         set(novoLoteRef, dados).then(() => {
             alert('Lote adicionado a este leilão!');
             document.getElementById('cadastroForm').reset();
-            mudarForm();
+            window.mudarForm();
+        }).catch((error) => {
+            console.error("Erro ao salvar lote: ", error);
         });
     });
 
@@ -279,12 +287,10 @@
     });
 
     function atualizarBotaoAtivo() {
-        // Resetar todos os botões "No Ar" da listagem
         document.querySelectorAll('.btn-no-ar').forEach(b => { 
             b.innerText = "Colocar no Ar"; 
             b.style.background="#10b981"; 
         });
-        // Pintar de vermelho apenas o botão do lote que está ativo
         const btnAtivo = document.getElementById(`btn-${loteAtivoId}`);
         if(btnAtivo) {
             btnAtivo.innerText = "NO AR";
@@ -293,12 +299,12 @@
     }
 
     // --- ENVIAR ALTERAÇÃO DE LANCE EM TEMPO REAL ---
-    window.updateLanceRealtime = window.atualizarLanceFirebase = function(valor) {
+    window.atualizarLanceFirebase = function(valor) {
         if(loteAtivoId && valor !== "") {
-            // Atualiza na tela do OBS instantaneamente
             update(ref(db, 'loteAtivo'), { lance: valor });
-            // Atualiza também dentro do histórico do leilão para não perder a informação
-            update(ref(db, `leiloes/${leilaoSelecionadoId}/lotes/${loteAtivoId}`), { lance: valor });
+            if(leilaoSelecionadoId) {
+                update(ref(db, `leiloes/${leilaoSelecionadoId}/lotes/${loteAtivoId}`), { lance: valor });
+            }
         }
     }
 </script>
