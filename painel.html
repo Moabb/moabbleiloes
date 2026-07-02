@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel de Controle do Leilão - Elite & Reprodutores V7</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; margin: 20px; color: #333; }
+        .grid-main { display: grid; grid-template-columns: 340px 1fr 1fr; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 0; color: #1e3a8a;}
+        h3 { color: #4b5563; margin-top: 0; }
+        .form-group { margin-bottom: 12px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        label { display: block; font-weight: bold; margin-bottom: 4px; font-size: 13px;}
+        input, select, button { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #1e3a8a; color: white; font-weight: bold; cursor: pointer; border: none; margin-top: 5px;}
+        button:hover { background: #111827; }
+        .lote-item, .leilao-item { padding: 10px; border-bottom: 1px solid #eee; }
+        .lote-item { display: flex; flex-direction: column; gap: 8px; background: #fafafa; margin-bottom: 8px; border-radius: 4px; border: 1px solid #e5e7eb;}
+        .lote-item.elite-badge { border-left: 5px solid #d97706; background: #fffbeb; }
+        .lote-acoes { display: flex; gap: 5px; justify-content: flex-end; }
+        .leilao-item { cursor: pointer; display: flex; justify-content: space-between; align-items: center;}
+        .leilao-item:hover { background: #f3f4f6; }
+        .leilao-item.selecionado { background: #dbeafe; border-left: 4px solid #2563eb; font-weight: bold; }
+        .btn-no-ar { background: #10b981; width: auto; padding: 5px 10px; }
+        .btn-no-ar.ativo { background: #ef4444; }
+        .btn-editar { background: #eab308; color: black; width: auto; padding: 5px 10px; }
+        .secao-pesquisa { background: #f0fdf4; border: 2px solid #22c55e; }
+        .desativado { opacity: 0.5; pointer-events: none; }
+        .badge { background: #d97706; color: white; padding: 2px 6px; font-size: 10px; border-radius: 4px; font-weight: bold; width: fit-content;}
+        .secao-genealogia { background: #f8fafc; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 6px; margin-top: 8px; }
+        .titulo-genealogia { font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 6px; display: block;}
+    </style>
+</head>
+<body>
+
+<h1>Master Control - Sistema Multileilões Elite</h1>
+
+<div class="grid-main">
+    
+    <!-- COLUNA 1: GERENCIAR EVENTOS -->
+    <div>
+        <div class="card">
+            <h2>1. Criar Leilão</h2>
+            <form id="leilaoForm">
+                <div class="form-group">
+                    <label for="nomeLeilao">Nome / Data do Evento</label>
+                    <input type="text" id="nomeLeilao" placeholder="Ex: Leilão Haras 02/07/2026" required>
+                </div>
+                <button type="submit">Criar Evento</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>Selecionar Leilão</h3>
+            <div id="listaLeiloes">Carregando eventos...</div>
+        </div>
+    </div>
+
+    <!-- COLUNA 2: CADASTRO / EDIÇÃO DE LOTES -->
+    <div class="card desativado" id="cardCadastroLotes">
+        <h2>2. <span id="tituloForm">Cadastrar Lote</span> em: <span id="nomeLeilaoAtual" style="color: #2563eb;">-</span></h2>
+        <form id="cadastroForm">
+            <!-- ID oculto para controle de edição -->
+            <input type="hidden" id="editLoteId" value="">
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Categoria</label>
+                    <select id="tipo" onchange="mudarForm()">
+                        <option value="bovino">Bovino (Touro/Matriz)</option>
+                        <option value="equino">Equino (Cavalo/Doadora)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Classificação</label>
+                    <select id="elite">
+                        <option value="nao">Produção / Comercial</option>
+                        <option value="sim">Lote Elite / Reprodutor PO</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Número do Lote</label>
+                    <input type="text" id="numero" placeholder="Ex: Lote 01" required>
+                </div>
+                <div class="form-group">
+                    <label>Qtd Animais</label>
+                    <input type="number" id="qtd" value="1" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Raça</label>
+                    <input type="text" id="raca" placeholder="Ex: Nelore PO / Mangalarga" required>
+                </div>
+                <div class="form-group">
+                    <label>Vendedor</label>
+                    <input type="text" id="vendedor" placeholder="Ex: Fazenda Nota 10" required>
+                </div>
+            </div>
+            
+            <!-- CAMPOS ESPECÍFICOS: BOVINOS -->
+            <div id="campoBovino">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nome do Touro (Se individual)</label>
+                        <input type="text" id="nomeBovino" placeholder="Ex: Bitelo da SS">
+                    </div>
+                    <div class="form-group">
+                        <label>Peso Médio (kg)</label>
+                        <input type="text" id="peso" placeholder="Ex: 850">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Sexo</label>
+                        <select id="sexoBovino">
+                            <option value="Macho">Macho (Reprodutor)</option>
+                            <option value="Fêmea">Fêmea (Matriz)</option>
+                            <option value="Misto">Misto</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Registro (RGD)</label>
+                        <input type="text" id="rgdBovino" placeholder="Ex: ABCZ 1234">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Idade / Categoria</label>
+                        <input type="text" id="categoria" placeholder="Ex: 32 meses">
+                    </div>
+                    <div class="form-group">
+                        <label>C.E. (Circ. Escrotal se Touro)</label>
+                        <input type="text" id="ceBovino" placeholder="Ex: 42 cm">
+                    </div>
+                </div>
+
+                <!-- GENEALOGIA BOVINA AVANÇADA (PAIS E AVÔS) -->
+                <div class="secao-genealogia">
+                    <span class="titulo-genealogia">Genealogia / Linhagem do Bovino</span>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Pai</label>
+                            <input type="text" id="paiBovino" placeholder="Nome do Pai">
+                        </div>
+                        <div class="form-group">
+                            <label>Mãe</label>
+                            <input type="text" id="maeBovino" placeholder="Nome da Mãe">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Avô Paterno (Pai do Pai)</label>
+                            <input type="text" id="avoPatBovino" placeholder="Avô Paterno">
+                        </div>
+                        <div class="form-group">
+                            <label>Avô Materno (Pai da Mãe)</label>
+                            <input type="text" id="avoMatBovino" placeholder="Avô Materno">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- CAMPOS ESPECÍFICOS: EQUINOS -->
+            <div id="campoEquino" style="display:none;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nome do Cavalo / Doadora</label>
+                        <input type="text" id="nome" placeholder="Ex: Tempestade">
+                    </div>
+                    <div class="form-group">
+                        <label>Pelagem</label>
+                        <input type="text" id="pelagem" placeholder="Ex: Baio">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Registro / Passaporte</label>
+                    <input type="text" id="rgdEquino" placeholder="Ex: ABQM 5678">
+                </div>
+                <div class="secao-genealogia">
+                    <span class="titulo-genealogia">Pedigree do Equino</span>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Pai</label>
+                            <input type="text" id="pai" placeholder="Nome do Pai">
+                        </div>
+                        <div class="form-group">
+                            <label>Mãe</label>
+                            <input type="text" id="mae" placeholder="Nome da Mãe">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Condição de Pagamento</label>
+                <input type="text" id="condicao" placeholder="Ex: 30x (2+2+2+24)" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Lance Inicial (R$)</label>
+                <input type="number" id="lance" placeholder="Ex: 1500 (Opcional)">
+            </div>
+            
+            <button type="submit" id="btnSalvarLote">Salvar Lote no Evento</button>
+            <button type="button" id="btnCancelarEdicao" style="background:#6b7280; display:none;" onclick="cancelarEdicao()">Cancelar Edição</button>
+        </form>
+    </div>
+
+    <!-- COLUNA 3: CONTROLES DA TRANSMISSÃO AO VIVO -->
+    <div class="card desativado" id="cardControleTransmissao">
+        <h2>3. Controle de Transmissão (No Ar)</h2>
+        
+        <div class="card secao-pesquisa">
+            <label style="color: #166534; font-size: 13px; font-weight: bold; text-transform: uppercase;">Pesquisar Lote (Nº ou Vendedor)</label>
+            <input type="text" id="buscaLote" placeholder="Digite o número do lote ou nome do vendedor..." style="margin-top: 5px;" oninput="filtrarLotesVisuais(this.value)">
+        </div>
+
+        <h3>Lotes deste Leilão</h3>
+        <div id="listaLotes">Selecione um leilão para ver os lotes.</div>
+    </div>
+</div>
+
+<!-- SCRIPTS DO FIREBASE v10 -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, set, push, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAMxBFnJwstpdUuT_Bl6EVYl6hR6h6TF80",
+        authDomain: "bd-leilao-moabb.firebaseapp.com",
+        databaseURL: "https://bd-leilao-moabb-default-rtdb.firebaseio.com",
+        projectId: "bd-leilao-moabb",
+        storageBucket: "bd-leilao-moabb.firebasestorage.app",
+        messagingSenderId: "1067323234874",
+        appId: "1:1067323234874:web:44c5bef512043972fdf303"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let leilaoSelecionadoId = null;
+    let loteAtivoId = null;
+    let cacheLotesLocal = {}; 
+
+    window.mudarForm = function() {
+        const tipo = document.getElementById('tipo').value;
+        document.getElementById('campoBovino').style.display = tipo === 'bovino' ? 'block' : 'none';
+        document.getElementById('campoEquino').style.display = tipo === 'equino' ? 'block' : 'none';
+    }
+
+    // --- CRIAR EVENTO ---
+    document.getElementById('leilaoForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const novoLeilaoRef = push(ref(db, 'leiloes'));
+        set(novoLeilaoRef, { id: novoLeilaoRef.key, nome: document.getElementById('nomeLeilao').value }).then(() => {
+            alert('Leilão criado com sucesso!');
+            document.getElementById('leilaoForm').reset();
+        });
+    });
+
+    // --- LISTAR EVENTOS ---
+    onValue(ref(db, 'leiloes'), (snapshot) => {
+        const listaDiv = document.getElementById('listaLeiloes');
+        listaDiv.innerHTML = '';
+        if (snapshot.exists()) {
+            snapshot.forEach((childSnapshot) => {
+                const leilao = childSnapshot.val();
+                const classeSel = leilao.id === leilaoSelecionadoId ? 'selecionado' : '';
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `leilao-item ${classeSel}`;
+                itemDiv.innerHTML = `<span>${leilao.nome}</span>`;
+                itemDiv.onclick = () => window.carregarLeilao(leilao.id, leilao.nome);
+                listaDiv.appendChild(itemDiv);
+            });
+        } else {
+            listaDiv.innerHTML = 'Nenhum leilão criado.';
+        }
+    });
+
+    // --- CARREGAR LEILÃO DESEJADO ---
+    window.carregarLeilao = function(id, nome) {
+        leilaoSelecionadoId = id;
+        cancelarEdicao();
+        document.getElementById('buscaLote').value = ''; 
+        
+        document.getElementById('cardCadastroLotes').classList.remove('desativado');
+        document.getElementById('cardControleTransmissao').classList.remove('desativado');
+        document.getElementById('nomeLeilaoAtual').innerText = nome;
+        document.querySelectorAll('.leilao-item').forEach(el => el.classList.remove('selecionado'));
+        
+        onValue(ref(db, `leiloes/${leilaoSelecionadoId}/lotes`), (snapshot) => {
+            const listaLotesDiv = document.getElementById('listaLotes');
+            listaLotesDiv.innerHTML = '';
+            cacheLotesLocal = {}; 
+            
+            if (snapshot.exists()) {
+                snapshot.forEach((childSnapshot) => {
+                    const lote = childSnapshot.val();
+                    cacheLotesLocal[lote.id] = lote; 
+
+                    const loteDiv = document.createElement('div');
+                    loteDiv.className = `lote-item ${lote.elite === 'sim' ? 'elite-badge' : ''}`;
+                    loteDiv.setAttribute('data-numero', lote.numero.toLowerCase());
+                    loteDiv.setAttribute('data-vendedor', lote.vendedor.toLowerCase());
+                    
+                    let detAdicional = "";
+                    if(lote.tipo === 'bovino') {
+                        let nomeB = lote.nomeBovino ? `<strong>${lote.nomeBovino}</strong>` : 'Vários';
+                        detAdicional = `| Animais: ${nomeB} | P: ${lote.paiBovino || 'N/I'}`;
+                    } else {
+                        detAdicional = `| Cavalo: <strong>${lote.nome}</strong> | P: ${lote.pai || 'N/I'}`;
+                    }
+
+                    const lanceExibido = lote.lance ? `R$ ${lote.lance}` : 'A definir';
+
+                    loteDiv.innerHTML = `
+                        <div>
+                            ${lote.elite === 'sim' ? '<span class="badge">REPRODUTOR / ELITE</span>' : ''}
+                            <strong>${lote.numero}</strong> - ${lote.raca} (${lote.qtd} Un.)${lote.ceBovino ? ' | C.E: '+lote.ceBovino : ''}<br>
+                            <small>Vendedor: ${lote.vendedor} ${detAdicional}</small><br>
+                            <small>Base: <strong>${lanceExibido}</strong></small>
+                        </div>
+                    `;
+                    
+                    const acoesDiv = document.createElement('div');
+                    acoesDiv.className = 'lote-acoes';
+
+                    const btnEdit = document.createElement('button');
+                    btnEdit.className = 'btn-editar';
+                    btnEdit.innerText = 'Editar';
+                    btnEdit.onclick = () => window.prepararEdicao(lote.id);
+
+                    const btnNoAr = document.createElement('button');
+                    btnNoAr.className = 'btn-no-ar';
+                    btnNoAr.id = `btn-${lote.id}`;
+                    btnNoAr.innerText = 'No Ar';
+                    btnNoAr.onclick = () => window.colocarNoAr(lote.id);
+                    
+                    acoesDiv.appendChild(btnEdit);
+                    acoesDiv.appendChild(btnNoAr);
+                    loteDiv.appendChild(acoesDiv);
+                    listaLotesDiv.appendChild(loteDiv);
+                });
+                
+                window.filtrarLotesVisuais(document.getElementById('buscaLote').value);
+                atualizarBotaoAtivo();
+            } else {
+                listaLotesDiv.innerHTML = 'Nenhum lote neste leilão.';
+            }
+        });
+    }
+
+    // --- FILTRO DINÂMICO DE LOTES ---
+    window.filtrarLotesVisuais = function(termo) {
+        const agulha = termo.toLowerCase().trim();
+        const itensLote = document.querySelectorAll('.lote-item');
+        
+        itensLote.forEach(item => {
+            const numeroLote = item.getAttribute('data-numero') || '';
+            const vendedorLote = item.getAttribute('data-vendedor') || '';
+            
+            if (numeroLote.includes(agulha) || vendedorLote.includes(agulha)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    // --- SALVAR OU EDITAR LOTE ---
+    document.getElementById('cadastroForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!leilaoSelecionadoId) return alert("Selecione um leilão primeiro!");
+
+        const editId = document.getElementById('editLoteId').value;
+        let loteRef = editId ? ref(db, `leiloes/${leilaoSelecionadoId}/lotes/${editId}`) : push(ref(db, `leiloes/${leilaoSelecionadoId}/lotes`));
+
+        const dados = {
+            id: editId || loteRef.key,
+            leilaoId: leilaoSelecionadoId,
+            tipo: document.getElementById('tipo').value,
+            elite: document.getElementById('elite').value,
+            numero: document.getElementById('numero').value,
+            qtd: document.getElementById('qtd').value,
+            raca: document.getElementById('raca').value,
+            vendedor: document.getElementById('vendedor').value,
+            condicao: document.getElementById('condicao').value,
+            lance: document.getElementById('lance').value || '',
+            nomeBovino: document.getElementById('nomeBovino').value || '',
+            peso: document.getElementById('peso').value || '',
+            sexoBovino: document.getElementById('sexoBovino').value || '',
+            rgdBovino: document.getElementById('rgdBovino').value || '',
+            categoria: document.getElementById('categoria').value || '',
+            ceBovino: document.getElementById('ceBovino').value || '',
+            paiBovino: document.getElementById('paiBovino').value || '',
+            maeBovino: document.getElementById('maeBovino').value || '',
+            avoPatBovino: document.getElementById('avoPatBovino').value || '',
+            avoMatBovino: document.getElementById('avoMatBovino').value || '',
+            nome: document.getElementById('nome').value || '',
+            pelagem: document.getElementById('pelagem').value || '',
+            rgdEquino: document.getElementById('rgdEquino').value || '',
+            pai: document.getElementById('pai').value || '',
+            mae: document.getElementById('mae').value || ''
+        };
+
+        set(loteRef, dados).then(() => {
+            alert(editId ? 'Lote atualizado com sucesso!' : 'Lote adicionado!');
+            if (editId && loteAtivoId === editId) {
+                set(ref(db, 'loteAtivo'), dados);
+            }
+            cancelarEdicao();
+        });
+    });
+
+    // --- CARREGAR DADOS NO FORMULÁRIO PARA EDIÇÃO ---
+    window.prepararEdicao = function(loteId) {
+        const lote = cacheLotesLocal[loteId];
+        if(!lote) return;
+
+        document.getElementById('tituloForm').innerText = "Editar Lote";
+        document.getElementById('btnSalvarLote').innerText = "Salvar Alterações";
+        document.getElementById('btnCancelarEdicao').style.display = 'block';
+        document.getElementById('editLoteId').value = lote.id;
+
+        document.getElementById('tipo').value = lote.tipo;
+        document.getElementById('elite').value = lote.elite || 'nao';
+        document.getElementById('numero').value = lote.numero;
+        document.getElementById('qtd').value = lote.qtd;
+        document.getElementById('raca').value = lote.raca;
+        document.getElementById('vendedor').value = lote.vendedor;
+        document.getElementById('condicao').value = lote.condicao;
+        document.getElementById('lance').value = lote.lance || '';
+
+        document.getElementById('nomeBovino').value = lote.nomeBovino || '';
+        document.getElementById('peso').value = lote.peso || '';
+        document.getElementById('sexoBovino').value = lote.sexoBovino || 'Macho';
+        document.getElementById('rgdBovino').value = lote.rgdBovino || '';
+        document.getElementById('categoria').value = lote.categoria || '';
+        document.getElementById('ceBovino').value = lote.ceBovino || '';
+        document.getElementById('paiBovino').value = lote.paiBovino || '';
+        document.getElementById('maeBovino').value = lote.maeBovino || '';
+        document.getElementById('avoPatBovino').value = lote.avoPatBovino || '';
+        document.getElementById('avoMatBovino').value = lote.avoMatBovino || '';
+
+        document.getElementById('nome').value = lote.nome || '';
+        document.getElementById('pelagem').value = lote.pelagem || '';
+        document.getElementById('rgdEquino').value = lote.rgdEquino || '';
+        document.getElementById('pai').value = lote.pai || '';
+        document.getElementById('mae').value = lote.mae || '';
+
+        window.mudarForm();
+        document.getElementById('cardCadastroLotes').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    window.cancelarEdicao = function() {
+        document.getElementById('tituloForm').innerText = "Cadastrar Lote";
+        document.getElementById('btnSalvarLote').innerText = "Salvar Lote no Evento";
+        document.getElementById('btnCancelarEdicao').style.display = 'none';
+        document.getElementById('editLoteId').value = "";
+        document.getElementById('cadastroForm').reset();
+        window.mudarForm();
+    }
+
+    // --- COLOCAR NO AR / DESATIVAR SE JÁ ESTIVER NO AR ---
+    window.colocarNoAr = function(loteId) {
+        // ALTERAÇÃO: Se o lote clicado for o que já está ativo, remove ele do ar
+        if (loteAtivoId === loteId) {
+            set(ref(db, 'loteAtivo'), null).then(() => {
+                loteAtivoId = null;
+                atualizarBotaoAtivo();
+            });
+        } else {
+            const lote = cacheLotesLocal[loteId];
+            if(lote) {
+                set(ref(db, 'loteAtivo'), lote);
+            }
+        }
+    }
+
+    onValue(ref(db, 'loteAtivo'), (snapshot) => {
+        // ALTERAÇÃO: Garante o reset visual se o nó estiver vazio
+        if(snapshot.exists() && snapshot.val() !== null){
+            loteAtivoId = snapshot.val().id;
+        } else {
+            loteAtivoId = null;
+        }
+        atualizarBotaoAtivo();
+    });
+
+    function atualizarBotaoAtivo() {
+        document.querySelectorAll('.btn-no-ar').forEach(b => { 
+            b.innerText = "No Ar"; b.style.background="#10b981"; 
+        });
+        
+        // ALTERAÇÃO: Só pinta de vermelho se houver um ID ativo válido na memória
+        if (loteAtivoId) {
+            const btnAtivo = document.getElementById(`btn-${loteAtivoId}`);
+            if(btnAtivo) {
+                btnAtivo.innerText = "NO AR"; btnAtivo.style.background = "#ef4444";
+            }
+        }
+    }
+</script>
+</body>
+</html>
